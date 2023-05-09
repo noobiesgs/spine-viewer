@@ -1,5 +1,7 @@
 <template>
-  <router-view />
+  <el-config-provider>
+    <router-view />
+  </el-config-provider>
 </template>
 
 <script lang="ts">
@@ -9,7 +11,7 @@ import { RouterView } from 'vue-router'
 @Component({
   components: {}
 })
-export default class HomeView extends Vue {
+export default class App extends Vue {
 
 }
 </script>
