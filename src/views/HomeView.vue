@@ -1,7 +1,8 @@
 <template>
   <main>
     <div id="drop-area" :class="dropActive ? 'drop-active' : ''" @drop="onDrop" @dragenter="onDragenter"
-      @dragover="onDragover" @dragleave="onDragleave"> </div>
+      @dragover="onDragover" @dragleave="onDragleave">
+    </div>
   </main>
 </template>
 
@@ -12,7 +13,7 @@ import { Spine, TextureAtlas } from 'pixi-spine';
 import { AtlasAttachmentLoader, SkeletonJson } from 'pixi-spine/node_modules/@pixi-spine/runtime-3.7';
 import SkeletonBinary from '@/spine/SkeletonBinary'
 
-@Component({})
+@Component({ components: {} })
 export default class HomeView extends Vue {
   dropActive = false
 
@@ -55,8 +56,13 @@ export default class HomeView extends Vue {
   }
 
   mounted(): void {
-    this.app = new PIXI.Application()
+    this.app = new PIXI.Application({
+      backgroundAlpha: 0,
+      antialias: true
+    })
     document.body.appendChild(this.app.view)
+
+    this.app.resizeTo = document.body
   }
 
   onSpineDataLoaded(_: PIXI.Loader, resources: Partial<Record<string, PIXI.LoaderResource>>): void {
