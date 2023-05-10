@@ -92,9 +92,9 @@ export default class HomeView extends Vue {
 
     const skelFile = files.find(file => skelRegex.test(file.name));
     const atlasFile = files.find(file => atlasRegex.test(file.name));
-    const textureFile = files.find(file => textureRegex.test(file.name));
+    const textureFiles = files.filter(file => textureRegex.test(file.name));
 
-    if (!skelFile || !atlasFile || !textureFile) {
+    if (!skelFile || !atlasFile || textureFiles.length === 0) {
       return;
     }
 
@@ -113,10 +113,12 @@ export default class HomeView extends Vue {
       })
     }
 
-    loader.add('Doll-png', URL.createObjectURL(textureFile), {
-      loadType: PIXI.LoaderResource.LOAD_TYPE.IMAGE,
-      xhrType: PIXI.LoaderResource.XHR_RESPONSE_TYPE.BLOB,
-    })
+    for (const textureFile of textureFiles) {
+      loader.add(textureFile.name, URL.createObjectURL(textureFile), {
+        loadType: PIXI.LoaderResource.LOAD_TYPE.IMAGE,
+        xhrType: PIXI.LoaderResource.XHR_RESPONSE_TYPE.BLOB,
+      })
+    }
 
     loader.load(this.onSpineDataLoaded)
   }
@@ -155,14 +157,17 @@ export default class HomeView extends Vue {
 
   onSpineDataLoaded(loader: PIXI.Loader, resources: Partial<Record<string, PIXI.LoaderResource>>): void {
     const atlasText = resources['Doll-atlas']?.data as string
-    const texture = PIXI.BaseTexture.from(resources['Doll-png']?.data as HTMLImageElement)
-    const atlas = new TextureAtlas(atlasText, (_, loaderFunction) => {
+    const atlas = new TextureAtlas(atlasText, (path, loaderFunction) => {
+      const textureResource = resources[path]
+      if (textureResource === undefined) {
+        throw 'texture resource not found: ' + path
+      }
+      const texture = PIXI.BaseTexture.from(textureResource.data as HTMLImageElement)
       loaderFunction(texture)
     })
 
     const atlasAttachmentLoader = new AtlasAttachmentLoader(atlas)
     const skeletonJson = new SkeletonJson(atlasAttachmentLoader)
-
     const skeletonBinary = new SkeletonBinary(new Uint8Array(resources['Doll-skel']?.data))
     skeletonBinary.initJson()
     console.log('json ', skeletonBinary.json)
@@ -240,7 +245,7 @@ export default class HomeView extends Vue {
 
     const filelist = event.dataTransfer?.files;
 
-    if (!filelist || filelist.length !== 3) {
+    if (!filelist || filelist.length < 3) {
       return;
     }
 
