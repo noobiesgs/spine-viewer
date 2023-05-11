@@ -36,6 +36,37 @@
                         </el-button-group>
                     </div>
                 </el-collapse-item>
+                <el-collapse-item title="Properties" name="2" v-if="viewModel">
+                    <div class="controller-item">
+                        <span class="demonstration">File Name</span>
+                        <span class="content">{{ viewModel.fileName }}</span>
+                    </div>
+                    <div class="controller-item">
+                        <span class="demonstration">Scale X</span>
+                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.scaleX" :step="0.1" :max="10"
+                            :min="0.01" />
+                    </div>
+                    <div class="controller-item">
+                        <span class="demonstration">Scale Y</span>
+                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.scaleY" :step="0.1" :max="10"
+                            :min="0.01" />
+                    </div>
+                    <div class="controller-item">
+                        <span class="demonstration">Position X</span>
+                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.positionX" :step="1" />
+                    </div>
+                    <div class="controller-item">
+                        <span class="demonstration">Position Y</span>
+                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.positionY" :step="1" />
+                    </div>
+                </el-collapse-item>
+                <el-collapse-item title="Action" name="3" v-if="viewModel">
+                    <div class="controller-item">
+                        <el-button type="danger" style="width: 100%;" @click="removeSpine" :icon="Delete">
+                            Remote
+                        </el-button>
+                    </div>
+                </el-collapse-item>
             </el-collapse>
         </div>
     </main>
@@ -43,31 +74,41 @@
 
 <script lang="ts">
 import { AnimationState } from 'pixi-spine/node_modules/@pixi-spine/runtime-3.7';
-import IconPlay from '@/components/icons/IconPlay.vue'
-import IconStop from '@/components/icons/IconStop.vue'
+import { Delete } from '@element-plus/icons-vue'
 
 interface ViewModel {
     animations: string[]
     duration: number
     animationTrack: number
     selectedAnimation: string | null
-    sliderDisable: boolean
+    sliderDisable: boolean,
+    fileName: string,
+    scaleX: number,
+    scaleY: number,
+    positionX: number,
+    positionY: number,
 }
 
 interface DataModel {
     state: AnimationState,
     spine: Spine
 }
+
+interface DragData {
+    startX: number,
+    startY: number,
+    beingDrag: boolean
+}
 </script>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
 import * as PIXI from 'pixi.js';
 import { Spine, TextureAtlas, settings } from 'pixi-spine';
+import type { ISkeletonData } from 'pixi-spine';
 import { AtlasAttachmentLoader, SkeletonJson } from 'pixi-spine/node_modules/@pixi-spine/runtime-3.7';
 import SkeletonBinary from '@/spine/SkeletonBinary'
 
-const activeNames = reactive(['1'])
+const activeNames = reactive(['1', '2', '3'])
 const viewModel = ref<ViewModel | null>(null)
 const dropActive = ref(false)
 
@@ -75,6 +116,8 @@ let view: HTMLCanvasElement | undefined
 let contianer: HTMLElement | null
 let app: PIXI.Application | null
 let model: DataModel | null
+const dragData: DragData = { startX: 0, startY: 0, beingDrag: false }
+const spineMap: Record<string, Spine> = {}
 
 function setViewRef(refDom: any): void {
     if (refDom) { view = refDom as HTMLCanvasElement }
@@ -130,6 +173,29 @@ function playAnimation(): void {
     }
 }
 
+function removeSpine(): void {
+    if (model?.spine) {
+        const fileName = findFileName(model.spine)
+        delete spineMap[fileName]
+
+        app!.stage.removeChild(model.spine)
+
+        model = null
+        viewModel.value = null
+    }
+}
+
+function findFileName(spine: Spine): string {
+    let fileName = 'NaN'
+    for (const key in spineMap) {
+        if (spineMap[key] === spine) {
+            fileName = key
+            break;
+        }
+    }
+    return fileName
+}
+
 function stopAnimation(): void {
     if (model && viewModel.value?.selectedAnimation) {
         model.state.clearTracks()
@@ -154,12 +220,18 @@ function setCurrentSpine(spine: Spine): void {
     const animationData = spine.spineData.animations[0]
     const state = spine.state as AnimationState
 
+    const fileName = findFileName(spine)
     viewModel.value = {
         animations,
         duration: animationData?.duration ?? 0,
         selectedAnimation: animationData?.name,
         animationTrack: state.tracks[0]?.animationLast ?? 0,
-        sliderDisable: true
+        sliderDisable: state.tracks.length === 0,
+        fileName,
+        scaleX: spine.scale.x,
+        scaleY: spine.scale.y,
+        positionX: spine.position.x,
+        positionY: spine.position.y
     }
 
     model = {
@@ -168,8 +240,8 @@ function setCurrentSpine(spine: Spine): void {
     }
 }
 
-function onSpineDataLoaded(loader: PIXI.Loader, resources: Partial<Record<string, PIXI.LoaderResource>>): void {
-    const atlasText = resources['Doll-atlas']?.data as string
+function loadSkeletonData(fileName: string, resources: Partial<Record<string, PIXI.LoaderResource>>): ISkeletonData {
+    const atlasText: string = resources[`${fileName}-atlas`]!.data
     const atlas = new TextureAtlas(atlasText, (path, loaderFunction) => {
         const textureResource = resources[path]
         if (textureResource === undefined) {
@@ -181,22 +253,66 @@ function onSpineDataLoaded(loader: PIXI.Loader, resources: Partial<Record<string
 
     const atlasAttachmentLoader = new AtlasAttachmentLoader(atlas)
     const skeletonJson = new SkeletonJson(atlasAttachmentLoader)
-    const skeletonBinary = new SkeletonBinary(new Uint8Array(resources['Doll-skel']?.data))
-    skeletonBinary.initJson()
-    console.log('json ', skeletonBinary.json)
-    const skeletonData = skeletonJson.readSkeletonData(skeletonBinary.json)
+    const binaryData = resources[`${fileName}-skel`]?.data
+    let json: any | null = null
+    if (binaryData) {
+        const skeletonBinary = new SkeletonBinary(new Uint8Array(binaryData))
+        skeletonBinary.initJson()
+        json = skeletonBinary.json
+    }
+    else {
+        json = JSON.parse(resources[`${fileName}-json`]?.data ?? '{}')
+    }
+    console.log('json ', json)
+    const skeletonData = skeletonJson.readSkeletonData(json)
+
+    return skeletonData
+}
+
+function onSpineDataLoaded(fileName: string, loader: PIXI.Loader, resources: Partial<Record<string, PIXI.LoaderResource>>): void {
+    const skeletonData = loadSkeletonData(fileName, resources)
 
     const animation = new Spine(skeletonData)
-    animation.x = view!.width / 2
-    animation.y = view!.height / 2
+    animation.position.set(view!.width / 2, view!.height / 2)
     animation.interactive = true
-    animation.on('click', (event: PIXI.InteractionEvent) => {
-        console.log('e', event)
-        console.log('indexOf', app?.stage.children.indexOf(animation))
+    animation.on('click', () => {
+        if (model?.spine !== animation) {
+            setCurrentSpine(animation)
+        }
+    })
+    animation.on('pointerdown', (event: PIXI.InteractionEvent) => {
+        if (!event.target) {
+            return;
+        }
+        const spine = event.target as Spine
+        if (model?.spine !== spine) {
+            setCurrentSpine(spine)
+        }
+        dragData.beingDrag = true
+        const parentLocation = event.data.getLocalPosition(spine.parent)
+        dragData.startX = spine.x - parentLocation.x
+        dragData.startY = spine.y - parentLocation.y
+    })
+    animation.on('pointerup', () => {
+        dragData.beingDrag = false
+    })
+    animation.on('pointerupoutside', () => {
+        dragData.beingDrag = false
+    })
+    animation.on('pointermove', (event: PIXI.InteractionEvent) => {
+        if (dragData.beingDrag && model?.spine) {
+            const parentLocation = event.data.getLocalPosition(model.spine.parent)
+            parentLocation.x += dragData.startX
+            parentLocation.y += dragData.startY
+            model.spine.position.set(parentLocation.x, parentLocation.y)
+            viewModel.value!.positionX = parentLocation.x
+            viewModel.value!.positionY = parentLocation.y
+        }
     })
 
     app?.stage.addChild(animation)
     animation.autoUpdate = true
+    spineMap[fileName] = animation
     setCurrentSpine(animation)
     loader.destroy()
 }
@@ -205,6 +321,7 @@ function loadFiles(files: File[]) {
     const skelRegex = /\.(skel|json)(\.bytes|\.txt)?$/i;
     const atlasRegex = /\.atlas(\.txt)?$/i;
     const textureRegex = /\.png$/i;
+    const fileNameRegex = /^(.+?)(\.[^.]*$|$)/;
 
     const skelFile = files.find(file => skelRegex.test(file.name));
     const atlasFile = files.find(file => atlasRegex.test(file.name));
@@ -214,17 +331,23 @@ function loadFiles(files: File[]) {
         return;
     }
 
+    let fileName = skelFile.name
+    const match = fileNameRegex.exec(skelFile.name)
+    if (match) {
+        fileName = match[1]
+    }
+
     const isJson = /\.json(\.bytes|\.txt)?$/i.test(skelFile.name)
 
     const loader = new PIXI.Loader()
-    loader.add('Doll-atlas', URL.createObjectURL(atlasFile))
+    loader.add(`${fileName}-atlas`, URL.createObjectURL(atlasFile))
     if (isJson) {
-        loader.add('Doll-json', URL.createObjectURL(skelFile), {
+        loader.add(`${fileName}-json`, URL.createObjectURL(skelFile), {
             xhrType: PIXI.LoaderResource.XHR_RESPONSE_TYPE.TEXT
         })
     }
     else {
-        loader.add('Doll-skel', URL.createObjectURL(skelFile), {
+        loader.add(`${fileName}-skel`, URL.createObjectURL(skelFile), {
             xhrType: PIXI.LoaderResource.XHR_RESPONSE_TYPE.BUFFER,
         })
     }
@@ -236,7 +359,7 @@ function loadFiles(files: File[]) {
         })
     }
 
-    loader.load(onSpineDataLoaded)
+    loader.load((l, r) => onSpineDataLoaded(fileName, l, r))
 }
 
 function onDrop(event: DragEvent): void {

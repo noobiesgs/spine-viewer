@@ -2,12 +2,12 @@
 
 export default class SkeletonBinary {
   private position: number = 0
-  private scale: number = 1
-
-  chars: string | null = null
+  private chars: string | null = null
+  
+  scale: number = 1
   json: any = {}
 
-  constructor(private data: Uint8Array) {}
+  constructor(private data: Uint8Array) { }
 
   readByte(): number {
     return this.position < this.data.length ? this.data[this.position++] : 0
@@ -74,9 +74,9 @@ export default class SkeletonBinary {
   readFloat(): number {
     return this.bytes2Float32(
       (this.readByte() << 24) +
-        (this.readByte() << 16) +
-        (this.readByte() << 8) +
-        (this.readByte() << 0)
+      (this.readByte() << 16) +
+      (this.readByte() << 8) +
+      (this.readByte() << 0)
     )
   }
 
@@ -153,7 +153,7 @@ export default class SkeletonBinary {
     charCount--
     this.chars = ''
     let b = 0
-    for (let i = 0; i < charCount; ) {
+    for (let i = 0; i < charCount;) {
       b = this.readByte()
       switch (b >> 4) {
         case 12:
@@ -380,11 +380,11 @@ export default class SkeletonBinary {
     this.json.skeleton = {}
     const skeleton = this.json.skeleton
     skeleton.hash = this.readString()
-    if (skeleton.hash.length === 0) {
+    if (skeleton.hash === null || skeleton.hash?.length === 0) {
       delete skeleton.hash
     }
     skeleton.spine = this.readString()
-    if (skeleton.spine.length === 0) {
+    if (skeleton.spine === null || skeleton.spine?.length === 0) {
       delete skeleton.spine
     }
     skeleton.width = this.readFloat()
