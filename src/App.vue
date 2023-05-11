@@ -4,14 +4,6 @@
   </el-config-provider>
 </template>
 
-<script lang="ts">
-import { Component, Vue } from 'vue-facing-decorator'
+<script setup lang="ts">
 import { RouterView } from 'vue-router'
-
-@Component({
-  components: {}
-})
-export default class App extends Vue {
-
-}
 </script>
