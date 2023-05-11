@@ -19,6 +19,8 @@ declare module '@vue/runtime-core' {
     ElSelect: typeof import('element-plus/es')['ElSelect']
     ElSlider: typeof import('element-plus/es')['ElSlider']
     IconCommunity: typeof import('./components/icons/IconCommunity.vue')['default']
+    IconLayerMinus: typeof import('./components/icons/IconLayerMinus.vue')['default']
+    IconLayerPlus: typeof import('./components/IconLayerPlus.vue')['default']
     IconPlay: typeof import('./components/icons/IconPlay.vue')['default']
     IconStop: typeof import('./components/icons/IconStop.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

@@ -1,7 +1,7 @@
 <template>
     <main :ref="setContianer">
         <canvas :ref="setViewRef" :class="{ 'drop-active': dropActive }" @drop="onDrop" @dragenter="onDragenter"
-            @dragover="onDragover" @dragleave="onDragleave" />
+            @dragover="onDragover" @dragleave="onDragleave" @mousewheel="onMouseWheel" />
 
         <div class="animation-controller">
             <el-collapse v-model="activeNames">
@@ -43,28 +43,37 @@
                     </div>
                     <div class="controller-item">
                         <span class="demonstration">Scale X</span>
-                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.scaleX" :step="0.1" :max="10"
-                            :min="0.01" />
+                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.scaleX" :step="0.1"
+                            :max="scaleConst.max" :min="scaleConst.min" @change="onScaleChange" />
                     </div>
                     <div class="controller-item">
                         <span class="demonstration">Scale Y</span>
-                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.scaleY" :step="0.1" :max="10"
-                            :min="0.01" />
+                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.scaleY" :step="0.1"
+                            :max="scaleConst.max" :min="scaleConst.min" @change="onScaleChange" />
                     </div>
                     <div class="controller-item">
                         <span class="demonstration">Position X</span>
-                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.positionX" :step="1" />
+                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.positionX" :step="1"
+                            @change="onPositionChange" />
                     </div>
                     <div class="controller-item">
                         <span class="demonstration">Position Y</span>
-                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.positionY" :step="1" />
+                        <el-input-number style="width:210px" :precision="2" v-model="viewModel.positionY" :step="1"
+                            @change="onPositionChange" />
                     </div>
                 </el-collapse-item>
-                <el-collapse-item title="Action" name="3" v-if="viewModel">
+                <el-collapse-item title="Actions" name="3" v-if="viewModel">
                     <div class="controller-item">
-                        <el-button type="danger" style="width: 100%;" @click="removeSpine" :icon="Delete">
-                            Remote
-                        </el-button>
+                        <el-button-group style="width: 100%;">
+                            <el-button type="primary" style="width: 33.3%;">
+                                <IconLayerPlus />
+                            </el-button>
+                            <el-button type="primary" style="width: 33.3%;">
+                                <IconLayerMinus />
+                            </el-button>
+                            <el-button type="danger" style="width: 33.3%;" @click="removeSpine" :icon="Delete">
+                            </el-button>
+                        </el-button-group>
                     </div>
                 </el-collapse-item>
             </el-collapse>
@@ -111,6 +120,10 @@ import SkeletonBinary from '@/spine/SkeletonBinary'
 const activeNames = reactive(['1', '2', '3'])
 const viewModel = ref<ViewModel | null>(null)
 const dropActive = ref(false)
+const scaleConst = reactive({
+    max: 10,
+    min: 0.1
+})
 
 let view: HTMLCanvasElement | undefined
 let contianer: HTMLElement | null
@@ -143,6 +156,37 @@ onMounted(() => {
 
     app.ticker.add(animationTrack)
 })
+
+function onPositionChange(): void {
+    if (model && viewModel.value) {
+        model!.spine.position.set(viewModel.value.positionX, viewModel.value.positionY)
+    }
+}
+
+function onScaleChange(): void {
+    if (model && viewModel.value) {
+        model!.spine.scale.set(viewModel.value.scaleX, viewModel.value.scaleY)
+    }
+}
+
+function onMouseWheel(e: WheelEvent): void {
+    if (model) {
+        let delta = 0
+        if (e.deltaY > 0) {
+            delta = -0.02
+        }
+        else {
+            delta = 0.02
+        }
+
+        const scale = model.spine.scale
+        scale.set(Math.min(scaleConst.max, Math.max(scale.x + delta, scaleConst.min)),
+            Math.min(Math.max(scale.y + delta, scaleConst.min), scaleConst.max))
+
+        viewModel.value!.scaleX = scale.x
+        viewModel.value!.scaleY = scale.y
+    }
+}
 
 function animiationSelectChanged(): void {
     stopAnimation()
