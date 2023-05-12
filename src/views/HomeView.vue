@@ -65,10 +65,12 @@
                 <el-collapse-item title="Actions" name="3" v-if="viewModel">
                     <div class="controller-item">
                         <el-button-group style="width: 100%;">
-                            <el-button type="primary" style="width: 33.3%;">
+                            <el-button type="primary" :disabled="viewModel.isTopmost" style="width: 33.3%;"
+                                @click="sendForward">
                                 <IconLayerPlus />
                             </el-button>
-                            <el-button type="primary" style="width: 33.3%;">
+                            <el-button type="primary" :disabled="viewModel.isBottomNode" style="width: 33.3%;"
+                                @click="sendBackward">
                                 <IconLayerMinus />
                             </el-button>
                             <el-button type="danger" style="width: 33.3%;" @click="removeSpine" :icon="Delete">
@@ -76,7 +78,24 @@
                         </el-button-group>
                     </div>
                 </el-collapse-item>
+                <el-collapse-item title="Loading" name="4">
+                    <div class="controller-item">
+                        <h4>Drag and drop the skel/json files along with their corresponding atlas and png files into the
+                            workspace for loading</h4>
+                    </div>
+                    <div class="controller-item">
+                        <span class="demonstration">Loading Scale</span>
+                        <el-input-number style="width:210px" :precision="2" v-model="loadingScale" :step="0.1"
+                            :max="scaleConst.max" :min="scaleConst.min" />
+                    </div>
+                </el-collapse-item>
             </el-collapse>
+        </div>
+        <div class="footer">
+            <span class="footer-context">All files will not be uploaded to the Internet and will be processed
+                locally. This website is made for personal hobby use. This website is provided 'as is'
+                and
+                your use of this website is entirely at your own risk.</span>
         </div>
     </main>
 </template>
@@ -96,6 +115,8 @@ interface ViewModel {
     scaleY: number,
     positionX: number,
     positionY: number,
+    isTopmost: boolean,
+    isBottomNode: boolean
 }
 
 interface DataModel {
@@ -117,13 +138,14 @@ import type { ISkeletonData } from 'pixi-spine';
 import { AtlasAttachmentLoader, SkeletonJson } from 'pixi-spine/node_modules/@pixi-spine/runtime-3.7';
 import SkeletonBinary from '@/spine/SkeletonBinary'
 
-const activeNames = reactive(['1', '2', '3'])
+const activeNames = reactive(['1', '2', '3', '4'])
 const viewModel = ref<ViewModel | null>(null)
 const dropActive = ref(false)
 const scaleConst = reactive({
     max: 10,
     min: 0.1
 })
+const loadingScale = ref(1)
 
 let view: HTMLCanvasElement | undefined
 let contianer: HTMLElement | null
@@ -157,6 +179,36 @@ onMounted(() => {
     app.ticker.add(animationTrack)
 })
 
+function sendBackward(): void {
+    if (model && viewModel.value) {
+        let index = app!.stage.getChildIndex(model.spine)
+        if (index > 0) {
+            const targetIndex = index - 1
+            const target = app!.stage.getChildAt(targetIndex)
+            app!.stage.swapChildren(model.spine, target)
+
+            index = app!.stage.getChildIndex(model.spine)
+            viewModel.value.isTopmost = index === app!.stage.children.length - 1
+            viewModel.value.isBottomNode = index === 0
+        }
+    }
+}
+
+function sendForward(): void {
+    if (model && viewModel.value) {
+        let index = app!.stage.getChildIndex(model.spine)
+        if (index < app!.stage.children.length - 1) {
+            const targetIndex = index + 1
+            const target = app!.stage.getChildAt(targetIndex)
+            app!.stage.swapChildren(model.spine, target)
+
+            index = app!.stage.getChildIndex(model.spine)
+            viewModel.value.isTopmost = index === app!.stage.children.length - 1
+            viewModel.value.isBottomNode = index === 0
+        }
+    }
+}
+
 function onPositionChange(): void {
     if (model && viewModel.value) {
         model!.spine.position.set(viewModel.value.positionX, viewModel.value.positionY)
@@ -173,10 +225,10 @@ function onMouseWheel(e: WheelEvent): void {
     if (model) {
         let delta = 0
         if (e.deltaY > 0) {
-            delta = -0.02
+            delta = -0.01
         }
         else {
-            delta = 0.02
+            delta = 0.01
         }
 
         const scale = model.spine.scale
@@ -265,6 +317,8 @@ function setCurrentSpine(spine: Spine): void {
     const state = spine.state as AnimationState
 
     const fileName = findFileName(spine)
+    const index = app!.stage.getChildIndex(spine)
+
     viewModel.value = {
         animations,
         duration: animationData?.duration ?? 0,
@@ -275,7 +329,9 @@ function setCurrentSpine(spine: Spine): void {
         scaleX: spine.scale.x,
         scaleY: spine.scale.y,
         positionX: spine.position.x,
-        positionY: spine.position.y
+        positionY: spine.position.y,
+        isTopmost: index === app!.stage.children.length - 1,
+        isBottomNode: index === 0
     }
 
     model = {
@@ -301,11 +357,13 @@ function loadSkeletonData(fileName: string, resources: Partial<Record<string, PI
     let json: any | null = null
     if (binaryData) {
         const skeletonBinary = new SkeletonBinary(new Uint8Array(binaryData))
+        skeletonBinary.scale = loadingScale.value
         skeletonBinary.initJson()
         json = skeletonBinary.json
     }
     else {
         json = JSON.parse(resources[`${fileName}-json`]?.data ?? '{}')
+        skeletonJson.scale = loadingScale.value
     }
     console.log('json ', json)
     const skeletonData = skeletonJson.readSkeletonData(json)
@@ -470,7 +528,7 @@ main .animation-controller {
     position: fixed;
     top: 20px;
     right: 20px;
-    width: 350px;
+    width: 370px;
     padding: 15px 15px;
     border-radius: 10px;
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
@@ -508,5 +566,20 @@ main .animation-controller .controller-item .content {
 
 main .animation-controller .controller-item .demonstration+.content {
     flex: 0 0 70%;
+}
+
+main .footer {
+    position: fixed;
+    width: 100%;
+    height: 30px;
+    bottom: 0px;
+    background-color: rgba(0, 0, 0, 0.509);
+}
+
+main .footer .footer-context {
+    color: white;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 </style>
