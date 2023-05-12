@@ -92,7 +92,7 @@
             </el-collapse>
         </div>
         <div class="footer">
-            <span class="footer-context">All files will not be uploaded to the Internet and will be processed
+            <span>All files will not be uploaded to the Internet and will be processed
                 locally. This website is made for personal hobby use. This website is provided 'as is'
                 and
                 your use of this website is entirely at your own risk.</span>
@@ -574,9 +574,6 @@ main .footer {
     height: 30px;
     bottom: 0px;
     background-color: rgba(0, 0, 0, 0.509);
-}
-
-main .footer .footer-context {
     color: white;
     overflow: hidden;
     text-overflow: ellipsis;
