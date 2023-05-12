@@ -13,6 +13,12 @@ const pathSrc = path.resolve(__dirname, 'src')
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd())
   return {
+    build: {
+      minify: 'esbuild'
+    },
+    esbuild: {
+      drop: mode === 'development' ? undefined : ['console', 'debugger']
+    },
     base: env['VITE_WEB_ROOT_PATH'],
     plugins: [
       vue(),

@@ -3,7 +3,7 @@
 export default class SkeletonBinary {
   private position: number = 0
   private chars: string | null = null
-  
+
   scale: number = 1
   json: any = {}
 
@@ -448,8 +448,9 @@ export default class SkeletonBinary {
 
     this.json.animations = {}
     const animations = this.json.animations
-    for (let i = 0, n = this.readInt(true); i < n; i++) {
-      console.log('animation count: ', n)
+    const animationCount = this.readInt(true)
+    console.log('animation count: ', animationCount)
+    for (let i = 0; i < animationCount; i++) {
       const animationName = this.readString() as string
       const animation = this.readAnimation()
       animations[animationName] = animation
