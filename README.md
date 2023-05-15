@@ -1,12 +1,26 @@
 # spine-viewer
 
-This template should help get you started developing with Vue 3 in Vite.
+[![.github/workflows/deploy.yml](https://github.com/noobiesgs/spine-viewer/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/noobiesgs/spine-viewer/actions/workflows/deploy.yml)
 
-## Recommended IDE Setup
+All files will not be uploaded to the Internet and will be processed locally. 
+
+This website is made for personal hobby use. 
+
+This website is provided 'as is' and your use of this website is entirely at your own risk.
+
+![main_ui](/docs/Snipaste_main_ui.png)
+
+## Quick Start
+
+https://noobiesgs.github.io/spine-viewer/
+
+
+## About Source Code
+### Recommended IDE Setup
 
 [VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
 
-## Type Support for `.vue` Imports in TS
+### Type Support for `.vue` Imports in TS
 
 TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
 
@@ -17,30 +31,30 @@ If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has a
     2) Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
 2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
 
-## Customize configuration
+### Customize configuration
 
 See [Vite Configuration Reference](https://vitejs.dev/config/).
 
-## Project Setup
+### Project Setup
 
 ```sh
-npm install
+pnpm install
 ```
 
-### Compile and Hot-Reload for Development
+#### Compile and Hot-Reload for Development
 
 ```sh
-npm run dev
+pnpm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+#### Type-Check, Compile and Minify for Production
 
 ```sh
-npm run build
+pnpm run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+#### Lint with [ESLint](https://eslint.org/)
 
 ```sh
-npm run lint
+pnpm run lint
 ```
