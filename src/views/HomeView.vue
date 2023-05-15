@@ -92,10 +92,13 @@
             </el-collapse>
         </div>
         <div class="footer">
-            <span>All files will not be uploaded to the Internet and will be processed
+            <span class="statement">All files will not be uploaded to the Internet and will be processed
                 locally. This website is made for personal hobby use. This website is provided 'as is'
                 and
                 your use of this website is entirely at your own risk.</span>
+            <span class="github"> <el-link style="color:white" href="https://github.com/noobiesgs/spine-viewer">
+                    <IconGithub style="margin-right: 10px;" />Github
+                </el-link></span>
         </div>
     </main>
 </template>
@@ -573,8 +576,14 @@ main .footer {
     width: 100%;
     height: 30px;
     bottom: 0px;
+    padding: 0 10px;
     background-color: rgba(0, 0, 0, 0.509);
     color: white;
+    display: flex;
+}
+
+main .footer .statement {
+    margin-right: auto;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
