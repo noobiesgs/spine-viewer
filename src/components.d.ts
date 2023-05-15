@@ -23,6 +23,7 @@ declare module '@vue/runtime-core' {
     IconGithub: typeof import('./components/icons/IconGithub.vue')['default']
     IconLayerMinus: typeof import('./components/icons/IconLayerMinus.vue')['default']
     IconLayerPlus: typeof import('./components/IconLayerPlus.vue')['default']
+    IconPause: typeof import('./components/icons/IconPause.vue')['default']
     IconPlay: typeof import('./components/icons/IconPlay.vue')['default']
     IconStop: typeof import('./components/icons/IconStop.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
