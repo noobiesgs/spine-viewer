@@ -27,11 +27,13 @@
                     </div>
                     <div class="controller-item">
                         <el-button-group style="width: 100%;">
-                            <el-button type="success" style="width: 50%;" @click="playAnimation">
+                            <el-button type="success" v-show="!viewModel.playing" style="width: 100%;"
+                                @click="playAnimation">
                                 <IconPlay />
                             </el-button>
-                            <el-button type="danger" style="width: 50%;" @click="stopAnimation">
-                                <IconStop />
+                            <el-button type="danger" v-show="viewModel.playing" style="width: 100%;"
+                                @click="pauseAnimation">
+                                <IconPause />
                             </el-button>
                         </el-button-group>
                     </div>
@@ -92,13 +94,16 @@
             </el-collapse>
         </div>
         <div class="footer">
-            <span class="statement">All files will not be uploaded to the Internet and will be processed
-                locally. This website is made for personal hobby use. This website is provided 'as is'
-                and
-                your use of this website is entirely at your own risk.</span>
-            <span class="github"> <el-link style="color:white" href="https://github.com/noobiesgs/spine-viewer">
+            <span class="statement">
+                All files will not be uploaded to the Internet and will be processed locally. This website is made for
+                personal hobby use. This website is provided 'as is' and your use of this website is entirely at your own
+                risk.
+            </span>
+            <span class="github">
+                <el-link style="color:white" href="https://github.com/noobiesgs/spine-viewer">
                     <IconGithub style="margin-right: 10px;" />Github
-                </el-link></span>
+                </el-link>
+            </span>
         </div>
     </main>
 </template>
@@ -119,7 +124,8 @@ interface ViewModel {
     positionX: number,
     positionY: number,
     isTopmost: boolean,
-    isBottomNode: boolean
+    isBottomNode: boolean,
+    playing: boolean
 }
 
 interface DataModel {
@@ -136,7 +142,7 @@ interface DragData {
 
 <script setup lang="ts">
 import * as PIXI from 'pixi.js';
-import { Spine, TextureAtlas, settings } from 'pixi-spine';
+import { Spine, TextureAtlas } from 'pixi-spine';
 import type { ISkeletonData } from 'pixi-spine';
 import { AtlasAttachmentLoader, SkeletonJson } from '@pixi-spine/runtime-3.7';
 import SkeletonBinary from '@/spine/SkeletonBinary'
@@ -244,8 +250,11 @@ function onMouseWheel(e: WheelEvent): void {
 }
 
 function animiationSelectChanged(): void {
-    stopAnimation()
     if (model) {
+        model.state.clearTracks()
+        model.spine.skeleton.setToSetupPose()
+        viewModel.value!.animationTrack = 0
+        viewModel.value!.sliderDisable = true
         const animationData = model.spine.spineData.animations.find(a => a.name === viewModel.value?.selectedAnimation)
         viewModel.value!.duration = animationData!.duration
     }
@@ -253,22 +262,27 @@ function animiationSelectChanged(): void {
 
 function onTrackTimeChanged(val: number): void {
     if (model && viewModel.value) {
-        settings.GLOBAL_AUTO_UPDATE = false
+        model.state.timeScale = 0;
+        viewModel.value.playing = false
         const track = model.state.tracks[0]
         if (track) {
-            viewModel.value.animationTrack = val
-            track.setAnimationLast(val)
-            track.trackTime = val
-            model.spine.update(0)
+            const currentTrackTime = Math.min(val, track.animation.duration - 0.0001);
+            track.setAnimationLast(currentTrackTime)
+            track.trackTime = currentTrackTime
         }
     }
 }
 
 function playAnimation(): void {
-    settings.GLOBAL_AUTO_UPDATE = true
-    if (settings.GLOBAL_AUTO_UPDATE && model && viewModel.value?.selectedAnimation && model.state.tracks.length === 0) {
+    if (model && viewModel.value?.selectedAnimation && model.state.tracks.length === 0) {
         model.state.setAnimation(0, viewModel.value.selectedAnimation, true)
         viewModel.value!.sliderDisable = false
+        model.state.timeScale = 1
+        viewModel.value.playing = true
+    }
+    else if (model) {
+        model.state.timeScale = 1
+        viewModel.value!.playing = true
     }
 }
 
@@ -295,18 +309,15 @@ function findFileName(spine: Spine): string {
     return fileName
 }
 
-function stopAnimation(): void {
+function pauseAnimation(): void {
     if (model && viewModel.value?.selectedAnimation) {
-        model.state.clearTracks()
-        model.spine.skeleton.setToSetupPose()
-        viewModel.value!.animationTrack = 0
-        viewModel.value!.sliderDisable = true
+        model.state.timeScale = 0
+        viewModel.value.playing = false
     }
-    settings.GLOBAL_AUTO_UPDATE = true
 }
 
 function animationTrack(_: number): void {
-    if (settings.GLOBAL_AUTO_UPDATE && model) {
+    if (model) {
         var track = model!.state.tracks[0]
         if (track && track.animationLast >= 0) {
             viewModel.value!.animationTrack = track.animationLast
@@ -316,8 +327,8 @@ function animationTrack(_: number): void {
 
 function setCurrentSpine(spine: Spine): void {
     const animations = spine.spineData.animations?.map(a => a.name) || []
-    const animationData = spine.spineData.animations[0]
     const state = spine.state as AnimationState
+    const animationData = state.tracks[0]?.animation ?? spine.spineData.animations[0]
 
     const fileName = findFileName(spine)
     const index = app!.stage.getChildIndex(spine)
@@ -334,7 +345,8 @@ function setCurrentSpine(spine: Spine): void {
         positionX: spine.position.x,
         positionY: spine.position.y,
         isTopmost: index === app!.stage.children.length - 1,
-        isBottomNode: index === 0
+        isBottomNode: index === 0,
+        playing: state.timeScale > 0 && state.tracks.length > 0
     }
 
     model = {
