@@ -26,16 +26,12 @@
                                 @change="onTrackTimeChanged" /></span>
                     </div>
                     <div class="controller-item">
-                        <el-button-group style="width: 100%;">
-                            <el-button type="success" v-show="!viewModel.playing" style="width: 100%;"
-                                @click="playAnimation">
-                                <IconPlay />
-                            </el-button>
-                            <el-button type="danger" v-show="viewModel.playing" style="width: 100%;"
-                                @click="pauseAnimation">
-                                <IconPause />
-                            </el-button>
-                        </el-button-group>
+                        <el-button type="success" v-show="!viewModel.playing" style="width: 100%;" @click="playAnimation">
+                            <IconPlay />
+                        </el-button>
+                        <el-button type="danger" v-show="viewModel.playing" style="width: 100%;" @click="pauseAnimation">
+                            <IconPause />
+                        </el-button>
                     </div>
                 </el-collapse-item>
                 <el-collapse-item title="Properties" name="2" v-if="viewModel">
@@ -253,6 +249,7 @@ function animiationSelectChanged(): void {
     if (model) {
         model.state.clearTracks()
         model.spine.skeleton.setToSetupPose()
+        viewModel.value!.playing = false
         viewModel.value!.animationTrack = 0
         viewModel.value!.sliderDisable = true
         const animationData = model.spine.spineData.animations.find(a => a.name === viewModel.value?.selectedAnimation)
@@ -581,6 +578,10 @@ main .animation-controller .controller-item .content {
 
 main .animation-controller .controller-item .demonstration+.content {
     flex: 0 0 70%;
+}
+
+main .animation-controller .controller-item .el-button+.el-button {
+    margin-left: 0px;
 }
 
 main .footer {
