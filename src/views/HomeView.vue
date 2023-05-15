@@ -101,7 +101,7 @@
 </template>
 
 <script lang="ts">
-import { AnimationState } from 'pixi-spine/node_modules/@pixi-spine/runtime-3.7';
+import { AnimationState } from '@pixi-spine/runtime-3.7';
 import { Delete } from '@element-plus/icons-vue'
 
 interface ViewModel {
@@ -135,7 +135,7 @@ interface DragData {
 import * as PIXI from 'pixi.js';
 import { Spine, TextureAtlas, settings } from 'pixi-spine';
 import type { ISkeletonData } from 'pixi-spine';
-import { AtlasAttachmentLoader, SkeletonJson } from 'pixi-spine/node_modules/@pixi-spine/runtime-3.7';
+import { AtlasAttachmentLoader, SkeletonJson } from '@pixi-spine/runtime-3.7';
 import SkeletonBinary from '@/spine/SkeletonBinary'
 
 const activeNames = reactive(['1', '2', '3', '4'])
