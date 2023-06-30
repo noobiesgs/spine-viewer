@@ -75,6 +75,16 @@
                             </el-button>
                         </el-button-group>
                     </div>
+                    <div class="controller-item">
+                        <el-button-group style="width: 100%;">
+                            <el-button type="success" @click="resumeAll">
+                                Resume All
+                            </el-button>
+                            <el-button type="success" disabled>
+                                Export 3.8
+                            </el-button>
+                        </el-button-group>
+                    </div>
                 </el-collapse-item>
                 <el-collapse-item title="Loading" name="4">
                     <div class="controller-item">
@@ -104,8 +114,11 @@
     </main>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import * as PIXI from 'pixi.js';
+import { Spine } from 'pixi-spine';
 import { AnimationState } from '@pixi-spine/runtime-3.7';
+import LoadSpine from '@/spine/SpineLoader'
 import { Delete } from '@element-plus/icons-vue'
 
 interface ViewModel {
@@ -134,14 +147,6 @@ interface DragData {
     startY: number,
     beingDrag: boolean
 }
-</script>
-
-<script setup lang="ts">
-import * as PIXI from 'pixi.js';
-import { Spine, TextureAtlas } from 'pixi-spine';
-import type { ISkeletonData } from 'pixi-spine';
-import { AtlasAttachmentLoader, SkeletonJson } from '@pixi-spine/runtime-3.7';
-import SkeletonBinary from '@/spine/SkeletonBinary'
 
 const activeNames = reactive(['1', '2', '3', '4'])
 const viewModel = ref<ViewModel | null>(null)
@@ -151,6 +156,8 @@ const scaleConst = reactive({
     min: 0.1
 })
 const loadingScale = ref(1)
+const animationControllerWidth = ref(370)
+const animationControllerMargin = ref(20)
 
 let view: HTMLCanvasElement | undefined
 let contianer: HTMLElement | null
@@ -158,6 +165,15 @@ let app: PIXI.Application | null
 let model: DataModel | null
 const dragData: DragData = { startX: 0, startY: 0, beingDrag: false }
 const spineMap: Record<string, Spine> = {}
+
+function resumeAll(): void {
+    for (const state of app!.stage.children) {
+        (state as Spine).state.timeScale = 1
+    }
+    if (model?.state && model.state.tracks.length > 0) {
+        viewModel.value!.playing = true
+    }
+}
 
 function setViewRef(refDom: any): void {
     if (refDom) { view = refDom as HTMLCanvasElement }
@@ -352,42 +368,12 @@ function setCurrentSpine(spine: Spine): void {
     }
 }
 
-function loadSkeletonData(fileName: string, resources: Partial<Record<string, PIXI.LoaderResource>>): ISkeletonData {
-    const atlasText: string = resources[`${fileName}-atlas`]!.data
-    const atlas = new TextureAtlas(atlasText, (path, loaderFunction) => {
-        const textureResource = resources[path]
-        if (textureResource === undefined) {
-            throw 'texture resource not found: ' + path
-        }
-        const texture = PIXI.BaseTexture.from(textureResource.data as HTMLImageElement)
-        loaderFunction(texture)
-    })
-
-    const atlasAttachmentLoader = new AtlasAttachmentLoader(atlas)
-    const skeletonJson = new SkeletonJson(atlasAttachmentLoader)
-    const binaryData = resources[`${fileName}-skel`]?.data
-    let json: any | null = null
-    if (binaryData) {
-        const skeletonBinary = new SkeletonBinary(new Uint8Array(binaryData))
-        skeletonBinary.scale = loadingScale.value
-        skeletonBinary.initJson()
-        json = skeletonBinary.json
+function onSpineDataLoaded(animation: Spine | null, fileName: string | null, error: string | null): void {
+    if (!animation || !fileName) {
+        return;
     }
-    else {
-        json = JSON.parse(resources[`${fileName}-json`]?.data ?? '{}')
-        skeletonJson.scale = loadingScale.value
-    }
-    console.log('json ', json)
-    const skeletonData = skeletonJson.readSkeletonData(json)
 
-    return skeletonData
-}
-
-function onSpineDataLoaded(fileName: string, loader: PIXI.Loader, resources: Partial<Record<string, PIXI.LoaderResource>>): void {
-    const skeletonData = loadSkeletonData(fileName, resources)
-
-    const animation = new Spine(skeletonData)
-    animation.position.set(view!.width / 2, view!.height / 2)
+    animation.position.set((view!.width - animationControllerWidth.value - animationControllerMargin.value) / 2, view!.height / 2)
     animation.interactive = true
     animation.on('click', () => {
         if (model?.spine !== animation) {
@@ -428,52 +414,6 @@ function onSpineDataLoaded(fileName: string, loader: PIXI.Loader, resources: Par
     animation.autoUpdate = true
     spineMap[fileName] = animation
     setCurrentSpine(animation)
-    loader.destroy()
-}
-
-function loadFiles(files: File[]) {
-    const skelRegex = /\.(skel|json)(\.bytes|\.txt)?$/i;
-    const atlasRegex = /\.atlas(\.txt)?$/i;
-    const textureRegex = /\.png$/i;
-    const fileNameRegex = /^(.+?)(\.[^.]*$|$)/;
-
-    const skelFile = files.find(file => skelRegex.test(file.name));
-    const atlasFile = files.find(file => atlasRegex.test(file.name));
-    const textureFiles = files.filter(file => textureRegex.test(file.name));
-
-    if (!skelFile || !atlasFile || textureFiles.length === 0) {
-        return;
-    }
-
-    let fileName = skelFile.name
-    const match = fileNameRegex.exec(skelFile.name)
-    if (match) {
-        fileName = match[1]
-    }
-
-    const isJson = /\.json(\.bytes|\.txt)?$/i.test(skelFile.name)
-
-    const loader = new PIXI.Loader()
-    loader.add(`${fileName}-atlas`, URL.createObjectURL(atlasFile))
-    if (isJson) {
-        loader.add(`${fileName}-json`, URL.createObjectURL(skelFile), {
-            xhrType: PIXI.LoaderResource.XHR_RESPONSE_TYPE.TEXT
-        })
-    }
-    else {
-        loader.add(`${fileName}-skel`, URL.createObjectURL(skelFile), {
-            xhrType: PIXI.LoaderResource.XHR_RESPONSE_TYPE.BUFFER,
-        })
-    }
-
-    for (const textureFile of textureFiles) {
-        loader.add(textureFile.name, URL.createObjectURL(textureFile), {
-            loadType: PIXI.LoaderResource.LOAD_TYPE.IMAGE,
-            xhrType: PIXI.LoaderResource.XHR_RESPONSE_TYPE.BLOB,
-        })
-    }
-
-    loader.load((l, r) => onSpineDataLoaded(fileName, l, r))
 }
 
 function onDrop(event: DragEvent): void {
@@ -493,7 +433,7 @@ function onDrop(event: DragEvent): void {
         files[i] = filelist[i]
     }
 
-    loadFiles(files)
+    LoadSpine(files, loadingScale.value, onSpineDataLoaded)
 }
 
 function onDragleave(event: DragEvent): void {
@@ -516,7 +456,6 @@ function onDragover(event: DragEvent): void {
 
 </script>
 
-
 <style scoped>
 main {
     background-image: url("@/assets/images/background.png");
@@ -538,9 +477,9 @@ main .drop-active {
 main .animation-controller {
     background-color: white;
     position: fixed;
-    top: 20px;
-    right: 20px;
-    width: 370px;
+    top: calc(v-bind(animationControllerMargin) * 1px);
+    right: calc(v-bind(animationControllerMargin) * 1px);
+    width: calc(v-bind(animationControllerWidth) * 1px);
     padding: 15px 15px;
     border-radius: 10px;
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
@@ -582,6 +521,10 @@ main .animation-controller .controller-item .demonstration+.content {
 
 main .animation-controller .controller-item .el-button+.el-button {
     margin-left: 0px;
+}
+
+main .animation-controller .controller-item+.controller-item {
+    margin-top: 5px;
 }
 
 main .footer {
